@@ -68,9 +68,22 @@ async function downloadImage(imageId) {
     });
 
     if (response.status === 200) {
+      const contentType = response.headers['content-type'] || 'image/jpeg';
+      const buffer = Buffer.from(response.data);
+
+      let extension = 'jpeg';
+      if (contentType.includes('png')) {
+        extension = 'png';
+      } else if (contentType.includes('jpg') || contentType.includes('jpeg')) {
+        extension = 'jpeg';
+      }
+
+      console.log(`Downloaded image ${imageId}: ${contentType} -> ${extension} (${buffer.length} bytes)`);
+
       return {
-        buffer: Buffer.from(response.data),
-        contentType: response.headers['content-type'] || 'image/jpeg'
+        buffer: buffer,
+        contentType: contentType,
+        extension: extension
       };
     }
     return null;
@@ -188,6 +201,7 @@ app.post('/export/receipts', async (req, res) => {
     for (let i = 0; i < receipts.length; i++) {
       const receipt = receipts[i];
 
+      // Add receipt data
       const row = worksheet.addRow({
         store_name: receipt.store_name || '',
         amount: formatCurrency(receipt.amount),
@@ -210,24 +224,35 @@ app.post('/export/receipts', async (req, res) => {
           console.log(`Downloading image ${i + 1}/${receipts.length}: ${receipt.image_id}`);
 
           const imageData = await downloadImage(receipt.image_id);
-          if (imageData) {
+          if (imageData && imageData.buffer && imageData.buffer.length > 0) {
             const imageId = workbook.addImage({
               buffer: imageData.buffer,
-              extension: imageData.contentType.includes('png') ? 'png' : 'jpeg'
+              extension: imageData.extension
             });
 
             row.height = 100;
 
             worksheet.addImage(imageId, {
               tl: { col: 5, row: currentRow - 1 },
-              ext: { width: 150, height: 100 }
+              ext: { width: 150, height: 100 },
+              editAs: 'oneCell'
             });
 
+            worksheet.getCell(currentRow, 6).value = 'Image embedded';
+            worksheet.getCell(currentRow, 6).font = { italic: true, color: { argb: 'FF27ae60' } };
+
             imageCounter++;
+          } else {
+            worksheet.getCell(currentRow, 6).value = 'Image failed to load';
+            worksheet.getCell(currentRow, 6).font = { italic: true, color: { argb: 'FFe74c3c' } };
           }
         } catch (imageError) {
-          console.error(`Failed to process image for receipt ${receipt.id}:`, imageError.message);
+          worksheet.getCell(currentRow, 6).value = 'Image error';
+          worksheet.getCell(currentRow, 6).font = { italic: true, color: { argb: 'FFe74c3c' } };
         }
+      } else {
+        worksheet.getCell(currentRow, 6).value = 'No image';
+        worksheet.getCell(currentRow, 6).font = { italic: true, color: { argb: 'FF95a5a6' } };
       }
 
       currentRow++;
@@ -259,9 +284,7 @@ app.post('/export/receipts', async (req, res) => {
 
     console.log('Generating Excel file...');
     await workbook.xlsx.writeFile(tempFilePath);
-
     const processingTime = Date.now() - startTime;
-    console.log(`Export completed in ${processingTime}ms with ${imageCounter} images embedded`);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -300,29 +323,6 @@ app.post('/export/receipts', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   }
-});
-
-app.get('/export/metrics', (req, res) => {
-  res.json({
-    service: 'Receipt Export Microservice',
-    status: 'operational',
-    supported_formats: ['xlsx'],
-    performance: {
-      max_receipts: 1000,
-      estimated_time_per_receipt: '50-200ms',
-      estimated_time_per_image: '500-2000ms',
-      typical_file_size: '500KB - 50MB (depending on images)'
-    },
-    features: [
-      'Excel spreadsheet generation',
-      'Receipt image embedding',
-      'Formatted currency and dates',
-      'Filter information inclusion',
-      'Summary calculations',
-      'Professional styling'
-    ],
-    timestamp: new Date().toISOString()
-  });
 });
 
 app.use((error, req, res, next) => {
