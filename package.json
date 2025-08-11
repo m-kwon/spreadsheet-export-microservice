@@ -1,0 +1,40 @@
+{
+  "name": "spreadsheet-export-microservice",
+  "version": "1.0.0",
+  "description": "Spreadsheet export microservice for RxReceipts healthcare expenses",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "export",
+    "excel",
+    "csv",
+    "microservice",
+    "spreadsheet",
+    "rxreceipts",
+    "healthcare"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/m-kwon/spreadsheet-export-microservice.git"
+  },
+  "author": "Matthew Kwon",
+  "license": "MIT",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/m-kwon/spreadsheet-export-microservice/issues"
+  },
+  "homepage": "https://github.com/m-kwon/spreadsheet-export-microservice#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "json2csv": "^6.0.0-alpha.2",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
